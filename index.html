@@ -2,31 +2,16 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Roleta Percentual</title>
+  <title>Roleta com Legenda</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 2rem;
-    }
-    .wheel {
-      width: 300px;
-      height: 300px;
-      border-radius: 50%;
-      border: 10px solid #333;
-      position: relative;
+    #canvas {
+      display: block;
       margin: 2rem auto;
-      overflow: hidden;
-      transform: rotate(0deg);
+      border: 5px solid #333;
+      border-radius: 50%;
+      background: white;
       transition: transform 4s ease-out;
-    }
-    .segment {
-      position: absolute;
-      width: 50%;
-      height: 50%;
-      transform-origin: 100% 100%;
-      background: red;
-      clip-path: polygon(0 0, 100% 0, 100% 100%);
     }
     #pointer {
       width: 0;
@@ -35,98 +20,157 @@
       border-right: 20px solid transparent;
       border-bottom: 30px solid black;
       margin: 0 auto;
+      position: relative;
+      top: 10px;
     }
-    #resultado {
-      margin-top: 1rem;
-      font-weight: bold;
+    .color-preview {
+      width: 20px;
+      height: 20px;
+      display: inline-block;
+      margin-right: 5px;
+      border: 1px solid #000;
+      vertical-align: middle;
     }
   </style>
 </head>
-<body>
-
-  <h1>Roleta Percentual</h1>
+<body class="bg-light">
+<div class="container py-4">
+  <h1 class="text-center mb-4">🎨 Roleta com Legenda e Cores</h1>
 
   <div id="pointer"></div>
-  <div class="wheel" id="wheel"></div>
+  <canvas id="canvas" width="400" height="400"></canvas>
 
-  <form id="configForm">
-    <p>Defina as opções com porcentagens:</p>
+  <form id="configForm" class="mt-4">
     <div id="inputs">
-      <div>
-        <input type="text" name="label" placeholder="Opção 1" required>
-        <input type="number" name="percent" placeholder="%" required>
+      <div class="row align-items-center mb-2">
+        <div class="col-auto">
+          <span class="color-preview" style="background:#FF6384;"></span>
+        </div>
+        <div class="col-md-5">
+          <input type="text" class="form-control" placeholder="Nome da opção" required>
+        </div>
+        <div class="col-md-3">
+          <input type="number" class="form-control" placeholder="Porcentagem (%)" required>
+        </div>
       </div>
     </div>
-    <button type="button" onclick="addInput()">+ Adicionar opção</button><br><br>
-    <button type="submit">Gerar Roleta</button>
+    <div class="d-flex gap-2 mb-3">
+      <button type="button" class="btn btn-secondary" onclick="addInput()">+ Adicionar opção</button>
+      <button type="submit" class="btn btn-primary">Gerar Roleta</button>
+    </div>
   </form>
 
-  <button onclick="girar()">🎡 Girar</button>
-  <div id="resultado"></div>
+  <button class="btn btn-success mb-3" onclick="girar()">Girar 🎯</button>
+  <div id="resultado" class="alert alert-info d-none"></div>
+</div>
 
-  <script>
-    let segmentos = [];
-    let angulos = [];
+<script>
+  const cores = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#00a86b', '#8B0000', '#8A2BE2', '#FF4500'];
+  let segmentos = [];
+  let angulos = [];
 
-    function addInput() {
-      const div = document.createElement("div");
-      div.innerHTML = `
-        <input type="text" name="label" placeholder="Opção" required>
-        <input type="number" name="percent" placeholder="%" required>
-      `;
-      document.getElementById("inputs").appendChild(div);
-    }
+  function addInput() {
+    const count = document.querySelectorAll('#inputs .row').length;
+    const color = cores[count % cores.length];
+    const div = document.createElement('div');
+    div.className = 'row align-items-center mb-2';
+    div.innerHTML = `
+      <div class="col-auto">
+        <span class="color-preview" style="background:${color};"></span>
+      </div>
+      <div class="col-md-5">
+        <input type="text" class="form-control" placeholder="Nome da opção" required>
+      </div>
+      <div class="col-md-3">
+        <input type="number" class="form-control" placeholder="Porcentagem (%)" required>
+      </div>
+    `;
+    document.getElementById('inputs').appendChild(div);
+  }
 
-    document.getElementById("configForm").addEventListener("submit", function (e) {
-      e.preventDefault();
-      const wheel = document.getElementById("wheel");
-      wheel.innerHTML = ""; // Limpa roleta anterior
-      segmentos = [];
-      angulos = [];
+  document.getElementById("configForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    const inputs = document.querySelectorAll("#inputs .row");
+    segmentos = [];
+    let total = 0;
 
-      const inputs = Array.from(document.querySelectorAll("#inputs div"));
-      let total = 0;
-      inputs.forEach(div => {
-        const label = div.querySelector("input[name='label']").value;
-        const percent = parseFloat(div.querySelector("input[name='percent']").value);
-        total += percent;
-        segmentos.push({ label, percent });
-      });
-
-      if (total !== 100) {
-        alert("As porcentagens devem somar 100%!");
-        return;
-      }
-
-      let currentAngle = 0;
-      segmentos.forEach((seg, i) => {
-        const angle = (seg.percent / 100) * 360;
-        angulos.push([currentAngle, currentAngle + angle]);
-        const segment = document.createElement("div");
-        segment.className = "segment";
-        segment.style.transform = `rotate(${currentAngle}deg)`;
-        segment.style.background = `hsl(${i * 60}, 70%, 60%)`;
-        wheel.appendChild(segment);
-        currentAngle += angle;
-      });
+    inputs.forEach((div, i) => {
+      const label = div.querySelector("input[type='text']").value;
+      const percent = parseFloat(div.querySelector("input[type='number']").value);
+      const color = cores[i % cores.length];
+      total += percent;
+      segmentos.push({ label, percent, color });
     });
 
-    function girar() {
-      const wheel = document.getElementById("wheel");
-      const randomAngle = Math.random() * 360;
-      const spins = 5;
-      const finalAngle = 360 * spins + randomAngle;
-      wheel.style.transform = `rotate(${finalAngle}deg)`;
-
-      setTimeout(() => {
-        const realAngle = (360 - (finalAngle % 360)) % 360;
-        const escolhido = segmentos.find((seg, i) => {
-          const [inicio, fim] = angulos[i];
-          return realAngle >= inicio && realAngle < fim;
-        });
-        document.getElementById("resultado").innerText = `Resultado: ${escolhido.label}`;
-      }, 4200);
+    if (total !== 100) {
+      alert("A soma das porcentagens deve ser exatamente 100%.");
+      return;
     }
-  </script>
+
+    desenharRoleta(0);
+    document.getElementById("resultado").classList.add("d-none");
+  });
+
+  function desenharRoleta(rotation = 0) {
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = 180;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(rotation * Math.PI / 180);
+    ctx.translate(-centerX, -centerY);
+
+    let startAngle = 0;
+    angulos = [];
+
+    segmentos.forEach(seg => {
+      const angle = (seg.percent / 100) * 2 * Math.PI;
+      const endAngle = startAngle + angle;
+      angulos.push({ label: seg.label, start: startAngle, end: endAngle });
+
+      // desenha fatia
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+      ctx.closePath();
+      ctx.fillStyle = seg.color;
+      ctx.fill();
+
+      // escreve texto
+      const midAngle = (startAngle + endAngle) / 2;
+      const textX = centerX + Math.cos(midAngle) * radius * 0.6;
+      const textY = centerY + Math.sin(midAngle) * radius * 0.6;
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 14px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(seg.label, textX, textY);
+
+      startAngle = endAngle;
+    });
+
+    ctx.restore();
+  }
+
+  function girar() {
+    const canvas = document.getElementById("canvas");
+    const totalRotation = 360 * 5 + Math.random() * 360;
+    canvas.style.transform = `rotate(${totalRotation}deg)`;
+
+    setTimeout(() => {
+      const finalAngle = (360 - (totalRotation % 360)) % 360;
+      const angleRad = finalAngle * Math.PI / 180;
+      const resultado = angulos.find(a => angleRad >= a.start && angleRad < a.end);
+      const msg = resultado ? `Resultado: ${resultado.label}` : "Erro ao calcular resultado.";
+      const box = document.getElementById("resultado");
+      box.textContent = msg;
+      box.classList.remove("d-none");
+    }, 4200);
+  }
+</script>
 </body>
 </html>
