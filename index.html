@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Roleta Percentual</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 2rem;
+    }
+    .wheel {
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      border: 10px solid #333;
+      position: relative;
+      margin: 2rem auto;
+      overflow: hidden;
+      transform: rotate(0deg);
+      transition: transform 4s ease-out;
+    }
+    .segment {
+      position: absolute;
+      width: 50%;
+      height: 50%;
+      transform-origin: 100% 100%;
+      background: red;
+      clip-path: polygon(0 0, 100% 0, 100% 100%);
+    }
+    #pointer {
+      width: 0;
+      height: 0;
+      border-left: 20px solid transparent;
+      border-right: 20px solid transparent;
+      border-bottom: 30px solid black;
+      margin: 0 auto;
+    }
+    #resultado {
+      margin-top: 1rem;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Roleta Percentual</h1>
+
+  <div id="pointer"></div>
+  <div class="wheel" id="wheel"></div>
+
+  <form id="configForm">
+    <p>Defina as opções com porcentagens:</p>
+    <div id="inputs">
+      <div>
+        <input type="text" name="label" placeholder="Opção 1" required>
+        <input type="number" name="percent" placeholder="%" required>
+      </div>
+    </div>
+    <button type="button" onclick="addInput()">+ Adicionar opção</button><br><br>
+    <button type="submit">Gerar Roleta</button>
+  </form>
+
+  <button onclick="girar()">🎡 Girar</button>
+  <div id="resultado"></div>
+
+  <script>
+    let segmentos = [];
+    let angulos = [];
+
+    function addInput() {
+      const div = document.createElement("div");
+      div.innerHTML = `
+        <input type="text" name="label" placeholder="Opção" required>
+        <input type="number" name="percent" placeholder="%" required>
+      `;
+      document.getElementById("inputs").appendChild(div);
+    }
+
+    document.getElementById("configForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const wheel = document.getElementById("wheel");
+      wheel.innerHTML = ""; // Limpa roleta anterior
+      segmentos = [];
+      angulos = [];
+
+      const inputs = Array.from(document.querySelectorAll("#inputs div"));
+      let total = 0;
+      inputs.forEach(div => {
+        const label = div.querySelector("input[name='label']").value;
+        const percent = parseFloat(div.querySelector("input[name='percent']").value);
+        total += percent;
+        segmentos.push({ label, percent });
+      });
+
+      if (total !== 100) {
+        alert("As porcentagens devem somar 100%!");
+        return;
+      }
+
+      let currentAngle = 0;
+      segmentos.forEach((seg, i) => {
+        const angle = (seg.percent / 100) * 360;
+        angulos.push([currentAngle, currentAngle + angle]);
+        const segment = document.createElement("div");
+        segment.className = "segment";
+        segment.style.transform = `rotate(${currentAngle}deg)`;
+        segment.style.background = `hsl(${i * 60}, 70%, 60%)`;
+        wheel.appendChild(segment);
+        currentAngle += angle;
+      });
+    });
+
+    function girar() {
+      const wheel = document.getElementById("wheel");
+      const randomAngle = Math.random() * 360;
+      const spins = 5;
+      const finalAngle = 360 * spins + randomAngle;
+      wheel.style.transform = `rotate(${finalAngle}deg)`;
+
+      setTimeout(() => {
+        const realAngle = (360 - (finalAngle % 360)) % 360;
+        const escolhido = segmentos.find((seg, i) => {
+          const [inicio, fim] = angulos[i];
+          return realAngle >= inicio && realAngle < fim;
+        });
+        document.getElementById("resultado").innerText = `Resultado: ${escolhido.label}`;
+      }, 4200);
+    }
+  </script>
+</body>
+</html>
