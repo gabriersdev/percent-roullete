@@ -76,117 +76,141 @@
     <div id="resultado" class="alert alert-info mt-3 d-none text-center"></div>
   </div>
 
-  <script>
-    const cores = ['#FF6384', '#FFCE56', '#36A2EB', '#4BC0C0', '#9966FF', '#FF9F40', '#00a86b', '#8B0000', '#8A2BE2', '#FF4500'];
-    let segmentos = [];
-    let angulos = [];
+<script>
+  const cores = ['#FF6384', '#FFCE56', '#36A2EB', '#4BC0C0', '#9966FF', '#FF9F40', '#00a86b', '#8B0000', '#8A2BE2', '#FF4500'];
+  let segmentos = [];
+  let angulos = [];
+  let roletaAtualizada = false;
+  let rotacaoAtual = 0;
 
-    function addInput() {
-      const count = document.querySelectorAll('#inputs .row').length;
-      const color = cores[count % cores.length];
-      const div = document.createElement('div');
-      div.className = 'row align-items-center mb-2';
-      div.innerHTML = `
-        <div class="col-auto">
-          <span class="color-preview" style="background:${color};"></span>
-        </div>
-        <div class="col-md-5">
-          <input type="text" class="form-control" placeholder="Nome da opção" required>
-        </div>
-        <div class="col-md-3">
-          <input type="number" class="form-control" placeholder="%" required>
-        </div>
-      `;
-      document.getElementById('inputs').appendChild(div);
-    }
+  function addInput() {
+    const count = document.querySelectorAll('#inputs .row').length;
+    const color = cores[count % cores.length];
+    const div = document.createElement('div');
+    div.className = 'row align-items-center mb-2';
+    div.innerHTML = `
+      <div class="col-auto">
+        <span class="color-preview" style="background:${color};"></span>
+      </div>
+      <div class="col-md-5">
+        <input type="text" class="form-control" placeholder="Nome da opção" required>
+      </div>
+      <div class="col-md-3">
+        <input type="number" class="form-control" placeholder="%" required>
+      </div>
+    `;
+    document.getElementById('inputs').appendChild(div);
+    desativarGirar();
+  }
 
-    document.getElementById("configForm").addEventListener("submit", function (e) {
-      e.preventDefault();
-      const inputs = document.querySelectorAll("#inputs .row");
-      segmentos = [];
-      let total = 0;
+  function desativarGirar() {
+    roletaAtualizada = false;
+    document.querySelector('button.btn-success').disabled = true;
+  }
 
-      inputs.forEach((div, i) => {
-        const label = div.querySelector("input[type='text']").value.trim();
-        const percent = parseFloat(div.querySelector("input[type='number']").value);
-        const color = cores[i % cores.length];
-        if (label && percent > 0) {
-          total += percent;
-          segmentos.push({ label, percent, color });
-        }
-      });
+  function ativarGirar() {
+    roletaAtualizada = true;
+    document.querySelector('button.btn-success').disabled = false;
+  }
 
-      if (total !== 100) {
-        alert("A soma das porcentagens deve ser exatamente 100%.");
-        return;
+  // Detecta alterações nos inputs
+  document.getElementById("inputs").addEventListener("input", desativarGirar);
+
+  document.getElementById("configForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    const inputs = document.querySelectorAll("#inputs .row");
+    segmentos = [];
+    let total = 0;
+
+    inputs.forEach((div, i) => {
+      const label = div.querySelector("input[type='text']").value.trim();
+      const percent = parseFloat(div.querySelector("input[type='number']").value);
+      const color = cores[i % cores.length];
+      if (label && percent > 0) {
+        total += percent;
+        segmentos.push({ label, percent, color });
       }
-
-      desenharRoleta(0);
-      document.getElementById("resultado").classList.add("d-none");
     });
 
-    function desenharRoleta(rotation = 0) {
-      const canvas = document.getElementById("canvas");
-      const ctx = canvas.getContext("2d");
-      const centerX = canvas.width / 2;
-      const centerY = canvas.height / 2;
-      const radius = 180;
+    if (total !== 100) {
+      alert("A soma das porcentagens deve ser exatamente 100%.");
+      return;
+    }
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    rotacaoAtual = 0;
+    document.getElementById("canvas").style.transform = `rotate(0deg)`;
+    desenharRoleta(0);
+    ativarGirar();
+    document.getElementById("resultado").classList.add("d-none");
+  });
+
+  function desenharRoleta(rotation = 0) {
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = 180;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(rotation * Math.PI / 180);
+    ctx.translate(-centerX, -centerY);
+
+    let startAngle = 0;
+    angulos = [];
+
+    segmentos.forEach(seg => {
+      const angle = (seg.percent / 100) * 2 * Math.PI;
+      const endAngle = startAngle + angle;
+      angulos.push({ label: seg.label, start: startAngle, end: endAngle });
+
+      // Fatia
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+      ctx.closePath();
+      ctx.fillStyle = seg.color;
+      ctx.fill();
+
+      // Texto
+      const midAngle = (startAngle + endAngle) / 2;
+      const textX = centerX + Math.cos(midAngle) * radius * 0.6;
+      const textY = centerY + Math.sin(midAngle) * radius * 0.6;
       ctx.save();
-      ctx.translate(centerX, centerY);
-      ctx.rotate(rotation * Math.PI / 180);
-      ctx.translate(-centerX, -centerY);
-
-      let startAngle = 0;
-      angulos = [];
-
-      segmentos.forEach(seg => {
-        const angle = (seg.percent / 100) * 2 * Math.PI;
-        const endAngle = startAngle + angle;
-        angulos.push({ label: seg.label, start: startAngle, end: endAngle });
-
-        // Desenhar fatia
-        ctx.beginPath();
-        ctx.moveTo(centerX, centerY);
-        ctx.arc(centerX, centerY, radius, startAngle, endAngle);
-        ctx.closePath();
-        ctx.fillStyle = seg.color;
-        ctx.fill();
-
-        // Escrever o nome
-        const midAngle = (startAngle + endAngle) / 2;
-        const textX = centerX + Math.cos(midAngle) * radius * 0.6;
-        const textY = centerY + Math.sin(midAngle) * radius * 0.6;
-        ctx.save();
-        ctx.fillStyle = "#fff";
-        ctx.font = "bold 14px sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(seg.label, textX, textY);
-        ctx.restore();
-
-        startAngle = endAngle;
-      });
-
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 14px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(seg.label, textX, textY);
       ctx.restore();
-    }
 
-    function girar() {
-      const canvas = document.getElementById("canvas");
-      const totalRotation = 360 * 5 + Math.random() * 360;
-      canvas.style.transform = `rotate(${totalRotation}deg)`;
+      startAngle = endAngle;
+    });
 
-      setTimeout(() => {
-        const finalAngle = (360 - (totalRotation % 360)) % 360;
-        const angleRad = finalAngle * Math.PI / 180;
-        const resultado = angulos.find(a => angleRad >= a.start && angleRad < a.end);
-        const msg = resultado ? `🎉 Resultado: ${resultado.label}` : "Erro ao calcular resultado.";
-        const box = document.getElementById("resultado");
-        box.textContent = msg;
-        box.classList.remove("d-none");
-      }, 4200);
-    }
-  </script>
+    ctx.restore();
+  }
+
+  function girar() {
+    if (!roletaAtualizada || segmentos.length === 0) return;
+
+    const canvas = document.getElementById("canvas");
+    const giroExtra = 360 * 5 + Math.random() * 360;
+    rotacaoAtual += giroExtra;
+
+    canvas.style.transition = 'transform 4s ease-out';
+    canvas.style.transform = `rotate(${rotacaoAtual}deg)`;
+
+    setTimeout(() => {
+      const finalAngle = (360 - (rotacaoAtual % 360)) % 360;
+      const angleRad = finalAngle * Math.PI / 180;
+      const resultado = angulos.find(a => angleRad >= a.start && angleRad < a.end);
+      const msg = resultado ? `🎉 Resultado: ${resultado.label}` : "Erro ao calcular resultado.";
+      const box = document.getElementById("resultado");
+      box.textContent = msg;
+      box.classList.remove("d-none");
+    }, 4200);
+  }
+</script>
 </body>
 </html>
