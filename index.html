@@ -87,6 +87,7 @@
 
       <div class="d-flex gap-2 mb-3">
         <button type="button" class="btn btn-secondary" onclick="addInput()">+ Adicionar opção</button>
+        <button type="button" class="btn btn-danger" onclick="removeInput()">- Remover opção</button>
         <button type="submit" class="btn btn-primary">Gerar Roleta</button>
       </div>
     </form>
@@ -122,6 +123,15 @@
       </div>
     `;
     document.getElementById('inputs').appendChild(div);
+    desativarGirar();
+  }
+
+  function removeInput() {
+    const inputs = Array.from(document.querySelectorAll('[type="text"][placeholder="Nome da opção"]'));
+    if (input) {
+      const lastInput = inputs.at(-1);
+      lastInput?.closest(".row.align-items-center.mb-2")?.remove();
+    }
     desativarGirar();
   }
 
